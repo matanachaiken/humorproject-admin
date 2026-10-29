@@ -11,12 +11,13 @@ type Values = { caption: string; idea: string; theme: string; style: string };
 export default function RiffForm({
   action,
   initial,
-  withImage = false,
+  image: imageMode = "none",
   submitLabel,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   initial: Values;
-  withImage?: boolean;
+  // "required" when creating; "optional" when editing (replaces the image).
+  image?: "none" | "required" | "optional";
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
@@ -37,22 +38,20 @@ export default function RiffForm({
   }
 
   function submit(formData: FormData) {
-    if (withImage) {
-      if (!image) {
-        setImageError("Choose an image.");
-        return;
-      }
-      formData.set("image", image.blob, "upload.jpg");
+    if (imageMode === "required" && !image) {
+      setImageError("Choose an image.");
+      return;
     }
+    if (image) formData.set("image", image.blob, "upload.jpg");
     return formAction(formData);
   }
 
   return (
     <form action={submit} className="space-y-5">
-      {withImage && (
+      {imageMode !== "none" && (
         <div>
           <label className="mb-1.5 block text-sm font-medium" htmlFor="file">
-            Image
+            {imageMode === "optional" ? "Replace image (optional)" : "Image"}
           </label>
           <div className="flex flex-wrap items-start gap-4">
             <div className="flex aspect-square w-40 items-center justify-center overflow-hidden rounded-lg border border-dashed border-line bg-surface-2 text-xs text-muted">
@@ -60,7 +59,7 @@ export default function RiffForm({
                 // eslint-disable-next-line @next/next/no-img-element -- local preview blob
                 <img src={image.url} alt="Preview" className="h-full w-full object-cover" />
               ) : (
-                "No image yet"
+                (imageMode === "optional" ? "Keeping the current image" : "No image yet")
               )}
             </div>
             <div className="text-sm text-ink-2">

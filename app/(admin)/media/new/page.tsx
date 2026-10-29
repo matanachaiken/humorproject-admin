@@ -24,7 +24,7 @@ export default async function NewRiffPage() {
       <div className="rounded-xl border border-line bg-surface p-5 sm:p-6">
         <RiffForm
           action={createRiff}
-          withImage
+          image="required"
           submitLabel="Create riff"
           initial={{ caption: "", idea: "", theme: theme?.theme ?? "", style: "classic" }}
         />

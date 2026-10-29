@@ -81,6 +81,7 @@ export default async function RiffPage({ params, searchParams }: PageProps<"/med
             <h2 className="mb-4 font-semibold">Edit</h2>
             <RiffForm
               action={updateRiff.bind(null, riff.id)}
+              image="optional"
               submitLabel="Save changes"
               initial={{
                 caption: riff.caption,

@@ -91,3 +91,26 @@ export function EmptyState({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+const STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  succeeded: { label: "✓ Succeeded", className: "text-good" },
+  ok: { label: "✓ OK", className: "text-good" },
+  pending: { label: "… Pending", className: "text-ink-2" },
+  rejected: { label: "⛔ Rejected", className: "text-ink-2" },
+  off_theme: { label: "🎯 Off theme", className: "text-ink-2" },
+  blocked: { label: "🚫 Image blocked", className: "text-bad" },
+  busy: { label: "⏳ AI busy", className: "text-bad" },
+  failed: { label: "✕ Failed", className: "text-bad" },
+  error: { label: "✕ Error", className: "text-bad" },
+};
+
+// Status with an icon and a word, so it never relies on color alone.
+export function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_STYLES[status] ?? { label: status, className: "text-ink-2" };
+  return <span className={`whitespace-nowrap text-sm font-medium ${s.className}`}>{s.label}</span>;
+}
+
+export function formatMs(ms: number | null | undefined) {
+  if (ms === null || ms === undefined) return "—";
+  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
