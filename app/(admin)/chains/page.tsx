@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireAdmin } from "@/lib/dal";
+import { placeholders } from "@/lib/format";
 import { PageHeader } from "../ui";
+import { updateChain, updateStep } from "./actions";
+import { EditForm, type EditField } from "./EditForm";
 import MixForm, { type MixRow } from "./MixForm";
 
 export const metadata: Metadata = { title: "Prompt chains" };
@@ -29,8 +33,10 @@ type ChainRow = {
   prompt_chain_mix: { weight: number; updated_at: string } | null;
 };
 
-export default async function ChainsPage() {
+export default async function ChainsPage({ searchParams }: PageProps<"/chains">) {
   const { db } = await requireAdmin();
+  // A switch, so a live prompt can't be changed by accident.
+  const editing = (await searchParams).edit === "1";
   const [{ data: chains }, { data: requests }, { data: riffs }, { data: calls }] = await Promise.all([
     db
       .from("prompt_chains")
@@ -67,7 +73,22 @@ export default async function ChainsPage() {
       <PageHeader
         title="Prompt chains"
         description="Every AI job in Daily Riff is a chain of prompt steps. Daily Riff reads these templates from the database and fills in the {{placeholders}}."
+        action={
+          <Link
+            href={editing ? "/chains" : "/chains?edit=1"}
+            className="rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium hover:border-axis"
+          >
+            {editing ? "Turn off editing" : "Turn on editing"}
+          </Link>
+        }
       />
+
+      {editing && (
+        <p className="mb-6 rounded-lg bg-surface-2 px-4 py-3 text-sm text-ink-2">
+          Editing is on. Saved changes reach the live site within about a minute. Copy a prompt before changing it, since
+          there&apos;s no undo. Steps can&apos;t be added, moved or deleted, because Daily Riff calls them by number.
+        </p>
+      )}
 
       <section className="mb-8 rounded-xl border border-line bg-surface p-5">
         <h2 className="font-semibold">Riff chain mix</h2>
@@ -87,6 +108,18 @@ export default async function ChainsPage() {
               <code className="text-xs text-muted">{chain.slug}</code>
             </div>
             {chain.description && <p className="mt-1 text-sm text-ink-2">{chain.description}</p>}
+            {editing && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-sm text-ink-2 hover:text-ink">Edit name and description</summary>
+                <div className="mt-3">
+                  <EditForm
+                    action={updateChain.bind(null, chain.id)}
+                    fields={chainFields(chain)}
+                    submitLabel="Save details"
+                  />
+                </div>
+              </details>
+            )}
             <ol className="mt-4 space-y-3">
               {[...chain.prompt_chain_steps]
                 .sort((a, b) => a.step_order - b.step_order)
@@ -103,9 +136,19 @@ export default async function ChainsPage() {
                         </span>
                         <span className="ml-auto text-xs text-ink-2">{callsPerStep.get(s.id) ?? 0} calls logged</span>
                       </summary>
-                      <pre className="overflow-x-auto whitespace-pre-wrap border-t border-line bg-surface-2/50 px-4 py-3 font-mono text-xs leading-relaxed text-ink-2">
-                        {s.prompt_template}
-                      </pre>
+                      {editing ? (
+                        <div className="border-t border-line px-4 py-4">
+                          <EditForm
+                            action={updateStep.bind(null, s.id)}
+                            fields={stepFields(s)}
+                            submitLabel="Save step"
+                          />
+                        </div>
+                      ) : (
+                        <pre className="overflow-x-auto whitespace-pre-wrap border-t border-line bg-surface-2/50 px-4 py-3 font-mono text-xs leading-relaxed text-ink-2">
+                          {s.prompt_template}
+                        </pre>
+                      )}
                     </details>
                   </li>
                 ))}
@@ -115,4 +158,28 @@ export default async function ChainsPage() {
       </div>
     </>
   );
+}
+
+function chainFields(chain: ChainRow): EditField[] {
+  return [
+    { name: "name", label: "Name", value: chain.name, maxLength: 120, required: true },
+    { name: "description", label: "Description", value: chain.description ?? "", maxLength: 500, rows: 2 },
+  ];
+}
+
+function stepFields(step: ChainRow["prompt_chain_steps"][number]): EditField[] {
+  const required = placeholders(step.prompt_template);
+  return [
+    { name: "name", label: "Step name", value: step.name, maxLength: 120, required: true },
+    {
+      name: "prompt_template",
+      label: "Prompt",
+      value: step.prompt_template,
+      maxLength: 20000,
+      required: true,
+      rows: 8,
+      mono: true,
+      hint: required.length ? `Keep these placeholders: ${required.join(", ")}` : "This step takes no placeholders.",
+    },
+  ];
 }

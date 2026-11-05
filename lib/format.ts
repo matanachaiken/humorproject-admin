@@ -30,6 +30,11 @@ export function fullName(p: { first_name: string | null; last_name: string | nul
   return [p?.first_name, p?.last_name].filter(Boolean).join(" ") || "Unnamed";
 }
 
+// Each distinct {{placeholder}} in a prompt template, sorted.
+export function placeholders(template: string) {
+  return [...new Set(template.match(/\{\{\w+\}\}/g) ?? [])].sort();
+}
+
 const NY = "America/New_York";
 
 // "Oct 22, 2:01 PM" in New York time, where Daily Riff's day starts.
